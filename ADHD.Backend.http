@@ -1,0 +1,6 @@
+@ADHD.Backend_HostAddress = http://localhost:5187
+
+GET {{ADHD.Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
