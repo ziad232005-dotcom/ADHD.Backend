@@ -1,15 +1,46 @@
 using System.Collections.Concurrent;
+using System.Threading.RateLimiting;
 using System.Security.Cryptography;
 using System.Text;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using ADHD.Backend.Sms;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 
+// SMS verification (the phone that sends the messages is configured in
+// User Secrets, see SMS_SETUP.md).
+builder.Services.Configure<SmsGatewayOptions>(
+    builder.Configuration.GetSection(SmsGatewayOptions.SectionName));
+
+builder.Services.AddHttpClient<ISmsSender, AndroidSmsGatewaySender>(
+    client => client.Timeout = TimeSpan.FromSeconds(10));
+
+builder.Services.AddSingleton<SmsOtpService>();
+
+// Each IP address can request at most 5 SMS codes per minute, because every
+// SMS uses the balance of the SIM card.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(SmsAuthEndpoints.RateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
+
 var app = builder.Build();
+
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -170,6 +201,8 @@ app.MapPost("/api/auth/verify-otp", (VerifyOtpRequest request) =>
         verified = true
     });
 });
+
+app.MapSmsAuthEndpoints();
 
 app.Run();
 
