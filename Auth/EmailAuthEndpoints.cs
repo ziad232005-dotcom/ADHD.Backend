@@ -163,7 +163,7 @@ public static class EmailAuthEndpoints
 
         try
         {
-            using var smtp = new SmtpClient();
+            using var smtp = new MailKit.Net.Smtp.SmtpClient();
 
             await smtp.ConnectAsync(
                 smtpServer, 587, SecureSocketOptions.StartTls,
