@@ -1,5 +1,6 @@
 using ADHD.Backend.Auth;
 using ADHD.Backend.Link;
+using ADHD.Backend.Shadows;
 using ADHD.Backend.Sms;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,9 @@ builder.Services.AddOtpRateLimits();
 // Short codes that hand a child's data from the parent's phone to theirs.
 builder.Services.AddSingleton<LinkCodeService>();
 
+// Shadow Teachers apply here, the admin approves, parents read the list.
+builder.Services.AddSingleton<ShadowStore>();
+
 var app = builder.Build();
 
 // Local testing runs over plain http (the Android emulator cannot trust
@@ -36,6 +40,7 @@ else
 }
 
 app.UseRateLimiter();
+app.UseStaticFiles();
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -45,5 +50,7 @@ app.MapGet("/", () => Results.Ok(new
 app.MapEmailAuthEndpoints();
 app.MapSmsAuthEndpoints();
 app.MapLinkEndpoints();
+app.MapShadowEndpoints();
+app.MapGet("/admin", () => Results.Redirect("/admin.html"));
 
 app.Run();

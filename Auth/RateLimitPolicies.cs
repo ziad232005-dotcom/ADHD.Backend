@@ -23,6 +23,11 @@ public static class RateLimitPolicies
             // of the email account.
             options.AddPolicy(Send, httpContext => ForIp(httpContext, 5));
             options.AddPolicy(Verify, httpContext => ForIp(httpContext, 30));
+
+            // Also stops anyone from guessing the admin password.
+            options.AddPolicy(
+                Shadows.ShadowEndpoints.AdminPolicy,
+                httpContext => ForIp(httpContext, 20));
         });
     }
 

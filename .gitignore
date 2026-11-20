@@ -7,3 +7,6 @@ obj/
 *.suo
 appsettings.*.local.json
 secrets.json
+
+# Applications and certificates of Shadow Teachers (personal data).
+App_Data/
