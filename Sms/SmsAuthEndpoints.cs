@@ -1,3 +1,4 @@
+using ADHD.Backend.Auth;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -9,19 +10,18 @@ public sealed record VerifySmsOtpRequest(string Phone, string Code);
 
 public static class SmsAuthEndpoints
 {
-    public const string RateLimitPolicy = "sms";
-
     public static void MapSmsAuthEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/auth/send-sms-otp", SendSmsOtpAsync)
-            .RequireRateLimiting(RateLimitPolicy);
+            .RequireRateLimiting(RateLimitPolicies.Send);
 
-        app.MapPost("/api/auth/verify-sms-otp", VerifySmsOtp);
+        app.MapPost("/api/auth/verify-sms-otp", VerifySmsOtp)
+            .RequireRateLimiting(RateLimitPolicies.Verify);
     }
 
     private static async Task<IResult> SendSmsOtpAsync(
         SendSmsOtpRequest request,
-        SmsOtpService otpService,
+        OtpService otpService,
         ISmsSender smsSender,
         IOptions<SmsGatewayOptions> options,
         CancellationToken cancellationToken)
@@ -82,7 +82,7 @@ public static class SmsAuthEndpoints
 
     private static IResult VerifySmsOtp(
         VerifySmsOtpRequest request,
-        SmsOtpService otpService)
+        OtpService otpService)
     {
         var code = request.Code ?? string.Empty;
 
@@ -98,20 +98,20 @@ public static class SmsAuthEndpoints
 
         return otpService.Verify(phone, code) switch
         {
-            SmsVerifyResult.Verified => Results.Ok(new
+            OtpVerifyResult.Verified => Results.Ok(new
             {
                 message = "Phone number verified successfully.",
                 verified = true
             }),
-            SmsVerifyResult.NoActiveCode => Results.BadRequest(new
+            OtpVerifyResult.NoActiveCode => Results.BadRequest(new
             {
                 message = "No active verification code. Request a new code."
             }),
-            SmsVerifyResult.Expired => Results.BadRequest(new
+            OtpVerifyResult.Expired => Results.BadRequest(new
             {
                 message = "Verification code expired. Request a new code."
             }),
-            SmsVerifyResult.TooManyAttempts => Results.Json(
+            OtpVerifyResult.TooManyAttempts => Results.Json(
                 new
                 {
                     message = "Too many incorrect attempts. " +

@@ -1,0 +1,9 @@
+# Build output and local files. Never commit them: they are rebuilt, and
+# local settings can contain passwords.
+bin/
+obj/
+.vs/
+*.user
+*.suo
+appsettings.*.local.json
+secrets.json

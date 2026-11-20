@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ADHD.Backend.Sms;
+namespace ADHD.Backend.Auth;
 
-public enum SmsVerifyResult
+public enum OtpVerifyResult
 {
     Verified,
     NoActiveCode,
@@ -14,10 +14,12 @@ public enum SmsVerifyResult
 }
 
 /// <summary>
-/// Creates and checks SMS verification codes. Codes live in memory only
-/// (like the email codes), so they are lost when the server restarts.
+/// Creates and checks verification codes for an email address or a phone
+/// number (the "destination"). Codes live in memory only, so they are lost
+/// when the server restarts. A code can be tried 5 times, and a new one
+/// can be requested once a minute.
 /// </summary>
-public sealed class SmsOtpService
+public sealed class OtpService
 {
     private const int CodeLifetimeMinutes = 5;
     private const int MaxVerifyAttempts = 5;
@@ -43,11 +45,11 @@ public sealed class SmsOtpService
     private readonly ConcurrentDictionary<string, OtpEntry> _entries = new();
 
     /// <summary>False while the previous code is still inside the cooldown.</summary>
-    public bool CanSend(string phone, out TimeSpan retryAfter)
+    public bool CanSend(string destination, out TimeSpan retryAfter)
     {
         retryAfter = TimeSpan.Zero;
 
-        if (!_entries.TryGetValue(phone, out var entry))
+        if (!_entries.TryGetValue(destination, out var entry))
         {
             return true;
         }
@@ -64,15 +66,15 @@ public sealed class SmsOtpService
     }
 
     /// <summary>Creates a new code, stores only its hash and returns the code.</summary>
-    public string Issue(string phone)
+    public string Issue(string destination)
     {
         PurgeExpired();
 
         var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
         var now = DateTime.UtcNow;
 
-        _entries[phone] = new OtpEntry(
-            Hash(phone, code),
+        _entries[destination] = new OtpEntry(
+            Hash(destination, code),
             now,
             now.AddMinutes(CodeLifetimeMinutes));
 
@@ -80,35 +82,35 @@ public sealed class SmsOtpService
     }
 
     /// <summary>Forgets the code, for example when the SMS could not be sent.</summary>
-    public void Discard(string phone) => _entries.TryRemove(phone, out _);
+    public void Discard(string destination) => _entries.TryRemove(destination, out _);
 
-    public SmsVerifyResult Verify(string phone, string code)
+    public OtpVerifyResult Verify(string destination, string code)
     {
-        if (!_entries.TryGetValue(phone, out var entry))
+        if (!_entries.TryGetValue(destination, out var entry))
         {
-            return SmsVerifyResult.NoActiveCode;
+            return OtpVerifyResult.NoActiveCode;
         }
 
         if (DateTime.UtcNow > entry.ExpiresAt)
         {
-            _entries.TryRemove(phone, out _);
-            return SmsVerifyResult.Expired;
+            _entries.TryRemove(destination, out _);
+            return OtpVerifyResult.Expired;
         }
 
         if (Interlocked.Increment(ref entry.Attempts) > MaxVerifyAttempts)
         {
-            _entries.TryRemove(phone, out _);
-            return SmsVerifyResult.TooManyAttempts;
+            _entries.TryRemove(destination, out _);
+            return OtpVerifyResult.TooManyAttempts;
         }
 
         if (!CryptographicOperations.FixedTimeEquals(
-                Hash(phone, code), entry.CodeHash))
+                Hash(destination, code), entry.CodeHash))
         {
-            return SmsVerifyResult.Incorrect;
+            return OtpVerifyResult.Incorrect;
         }
 
-        _entries.TryRemove(phone, out _);
-        return SmsVerifyResult.Verified;
+        _entries.TryRemove(destination, out _);
+        return OtpVerifyResult.Verified;
     }
 
     private void PurgeExpired()
@@ -124,6 +126,6 @@ public sealed class SmsOtpService
         }
     }
 
-    private static byte[] Hash(string phone, string code) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes($"{phone}:{code}"));
+    private static byte[] Hash(string destination, string code) =>
+        SHA256.HashData(Encoding.UTF8.GetBytes($"{destination}:{code}"));
 }
