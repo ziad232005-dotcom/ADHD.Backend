@@ -1,4 +1,5 @@
 using ADHD.Backend.Auth;
+using ADHD.Backend.Link;
 using ADHD.Backend.Sms;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,9 @@ builder.Services.AddHttpClient<ISmsSender, AndroidSmsGatewaySender>(
 // One service keeps the verification codes of emails and phone numbers.
 builder.Services.AddSingleton<OtpService>();
 builder.Services.AddOtpRateLimits();
+
+// Short codes that hand a child's data from the parent's phone to theirs.
+builder.Services.AddSingleton<LinkCodeService>();
 
 var app = builder.Build();
 
@@ -40,5 +44,6 @@ app.MapGet("/", () => Results.Ok(new
 
 app.MapEmailAuthEndpoints();
 app.MapSmsAuthEndpoints();
+app.MapLinkEndpoints();
 
 app.Run();
