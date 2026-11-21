@@ -26,7 +26,8 @@ public static class ShadowEndpoints
             .RequireRateLimiting(AdminPolicy);
 
         admin.MapGet("", AdminList);
-        admin.MapGet("{id:int}/certificate", AdminCertificate);
+        admin.MapGet("{id:int}/documents/{index:int}", AdminDocument);
+        admin.MapGet("{id:int}/photo", AdminPhoto);
         admin.MapPost("{id:int}/approve", AdminApprove);
         admin.MapPost("{id:int}/reject", AdminReject);
     }
@@ -35,14 +36,16 @@ public static class ShadowEndpoints
         ShadowApplicationRequest request,
         ShadowStore store)
     {
-        var error = ShadowValidation.Validate(
-            request, out var record, out var certificate, out var extension);
-        if (error is not null)
+        var error = ShadowValidation.Validate(request, out var application);
+        if (error is not null || application is null)
         {
-            return Results.BadRequest(new { message = error });
+            return Results.BadRequest(new
+            {
+                message = error ?? "The application is not valid."
+            });
         }
 
-        var saved = store.Add(record, certificate, extension);
+        var saved = store.Add(application);
         if (saved is null)
         {
             return Results.Problem(
@@ -58,15 +61,15 @@ public static class ShadowEndpoints
         {
             s.Id,
             s.Name,
-            s.City,
+            s.Governorate,
             s.YearsExperience,
-            s.Focus,
-            s.Education,
-            s.Availability,
-            s.Bio,
-            s.PricePerSession,
-            s.Phone,
-            s.Whatsapp,
+            s.Qualification,
+            s.University,
+            s.CurrentWorkplace,
+            s.ChildExperience,
+            s.AdhdExperience,
+            s.Skills,
+            Phone = s.Mobile,
             s.Email
         });
 
@@ -115,7 +118,22 @@ public static class ShadowEndpoints
         return Results.Ok(new { shadows = store.WithStatus(wanted) });
     }
 
-    private static IResult AdminCertificate(
+    private static IResult AdminDocument(
+        int id,
+        int index,
+        HttpContext context,
+        IConfiguration configuration,
+        ShadowStore store)
+    {
+        if (CheckAdmin(context, configuration) is { } denied) return denied;
+
+        var document = store.Document(id, index);
+        return document is null
+            ? Results.NotFound(new { message = "No such document." })
+            : Results.File(document.Value.Path, document.Value.ContentType);
+    }
+
+    private static IResult AdminPhoto(
         int id,
         HttpContext context,
         IConfiguration configuration,
@@ -123,10 +141,10 @@ public static class ShadowEndpoints
     {
         if (CheckAdmin(context, configuration) is { } denied) return denied;
 
-        var certificate = store.Certificate(id);
-        return certificate is null
-            ? Results.NotFound(new { message = "No certificate." })
-            : Results.File(certificate.Value.Path, certificate.Value.ContentType);
+        var photo = store.Photo(id);
+        return photo is null
+            ? Results.NotFound(new { message = "No photo." })
+            : Results.File(photo.Value.Path, photo.Value.ContentType);
     }
 
     private static IResult AdminApprove(

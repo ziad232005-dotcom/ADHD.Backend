@@ -51,17 +51,29 @@ async function review(id, action, body) {
   load();
 }
 
-async function showCertificate(id, holder) {
-  const response = await call(`/api/admin/shadows/${id}/certificate`);
+async function showFile(path, name, holder) {
+  const response = await call(path);
   if (!response.ok) {
-    say('No certificate found.');
+    say('The file was not found.');
     return;
   }
-  const image = document.createElement('img');
-  image.className = 'cert';
-  image.alt = 'Certificate';
-  image.src = URL.createObjectURL(await response.blob());
-  holder.replaceChildren(image);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+
+  if (blob.type.startsWith('image/')) {
+    const image = document.createElement('img');
+    image.className = 'cert';
+    image.alt = name;
+    image.src = url;
+    holder.replaceChildren(image);
+    return;
+  }
+
+  // PDFs are saved, then opened with the device's own PDF viewer.
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name || 'document.pdf';
+  link.click();
 }
 
 function render(shadows) {
@@ -87,22 +99,38 @@ function render(shadows) {
     meta.textContent = `Reference ${s.id} | ${new Date(s.createdAt).toLocaleString()}`;
     card.append(title, meta);
 
-    line(card, 'City', s.city);
-    line(card, 'Experience', `${s.yearsExperience} years`);
-    line(card, 'Works with', (s.focus || []).join(', '));
-    line(card, 'Degree', s.education);
-    line(card, 'Available', s.availability);
-    line(card, 'Price', s.pricePerSession == null ? '' : `${s.pricePerSession} EGP`);
-    line(card, 'About', s.bio);
-    line(card, 'Phone', s.phone);
-    line(card, 'WhatsApp', s.whatsapp);
+    line(card, 'Date of birth', new Date(s.birthDate).toLocaleDateString());
+    line(card, 'Mobile', s.mobile);
     line(card, 'Email', s.email);
+    line(card, 'Governorate', s.governorate);
+    line(card, 'Qualification', s.qualification);
+    line(card, 'University', s.university);
+    line(card, 'Faculty', s.faculty);
+    line(card, 'Department', s.department);
+    line(card, 'Graduated', s.graduationYear);
+    line(card, 'Experience', s.yearsExperience);
+    line(card, 'Current workplace', s.currentWorkplace);
+    line(card, 'Previous workplaces', s.previousWorkplaces);
+    line(card, 'With children', s.childExperience);
+    line(card, 'ADHD', s.adhdExperience);
+    line(card, 'Skills', (s.skills || []).join(', '));
     line(card, 'Reason for rejection', s.rejectReason);
 
     const holder = document.createElement('div');
     const actions = document.createElement('div');
     actions.className = 'actions';
-    actions.append(button('Show certificate', 'ghost', () => showCertificate(s.id, holder)));
+
+    if (s.photoFile) {
+      actions.append(button('Show photo', 'ghost', () =>
+        showFile(`/api/admin/shadows/${s.id}/photo`, 'photo', holder)));
+    }
+
+    (s.documents || []).forEach((doc, index) => {
+      const title = doc.certificateName || doc.kind;
+      const details = [doc.issuer, doc.number].filter(Boolean).join(' | ');
+      actions.append(button(details ? `${title} (${details})` : title, 'ghost', () =>
+        showFile(`/api/admin/shadows/${s.id}/documents/${index}`, doc.fileName, holder)));
+    });
 
     if (s.status !== 'Approved' && s.status !== 1) {
       actions.append(button('Approve', '', () => review(s.id, 'approve')));

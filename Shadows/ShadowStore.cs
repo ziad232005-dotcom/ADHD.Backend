@@ -56,20 +56,32 @@ public sealed class ShadowStore
     }
 
     /// <summary>Returns the new record, or null when the store is full.</summary>
-    public ShadowRecord? Add(ShadowRecord record, byte[] certificate, string extension)
+    public ShadowRecord? Add(ValidatedApplication application)
     {
         lock (_lock)
         {
             if (_items.Count >= MaxApplications) return null;
 
+            var record = application.Record;
             record.Id = _items.Count == 0 ? 1 : _items.Max(i => i.Id) + 1;
             record.CreatedAt = DateTime.UtcNow;
             record.Status = ShadowStatus.Pending;
-            record.CertificateFile = $"{record.Id}{extension}";
 
-            File.WriteAllBytes(
-                Path.Combine(_certificates, record.CertificateFile),
-                certificate);
+            if (application.Photo is { } photo)
+            {
+                record.PhotoFile = $"{record.Id}_photo{photo.Extension}";
+                File.WriteAllBytes(
+                    Path.Combine(_certificates, record.PhotoFile), photo.Bytes);
+            }
+
+            var number = 0;
+            foreach (var (info, file) in application.Documents)
+            {
+                info.StoredFile = $"{record.Id}_{number++}{file.Extension}";
+                File.WriteAllBytes(
+                    Path.Combine(_certificates, info.StoredFile), file.Bytes);
+                record.Documents.Add(info);
+            }
 
             _items.Add(record);
             Save();
@@ -111,22 +123,34 @@ public sealed class ShadowStore
         }
     }
 
-    /// <summary>The certificate file of [id], or null.</summary>
-    public (string Path, string ContentType)? Certificate(int id)
+    /// <summary>One stored document of [id], or null.</summary>
+    public (string Path, string ContentType, string Name)? Document(int id, int index)
     {
         ShadowRecord? item;
         lock (_lock)
         {
             item = _items.FirstOrDefault(i => i.Id == id);
         }
-        if (item is null || item.CertificateFile.Length == 0) return null;
+        if (item is null || index < 0 || index >= item.Documents.Count) return null;
 
-        var path = Path.Combine(_certificates, item.CertificateFile);
+        var doc = item.Documents[index];
+        var path = Path.Combine(_certificates, doc.StoredFile);
+        return File.Exists(path) ? (path, doc.ContentType, doc.FileName) : null;
+    }
+
+    /// <summary>The profile photo of [id], or null.</summary>
+    public (string Path, string ContentType)? Photo(int id)
+    {
+        ShadowRecord? item;
+        lock (_lock)
+        {
+            item = _items.FirstOrDefault(i => i.Id == id);
+        }
+        if (item?.PhotoFile is null) return null;
+
+        var path = Path.Combine(_certificates, item.PhotoFile);
         if (!File.Exists(path)) return null;
 
-        var type = item.CertificateFile.EndsWith(".png")
-            ? "image/png"
-            : "image/jpeg";
-        return (path, type);
+        return (path, item.PhotoFile.EndsWith(".png") ? "image/png" : "image/jpeg");
     }
 }

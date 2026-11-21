@@ -29,6 +29,7 @@ data, are listed in `.gitignore`, and must be backed up with the server.
 | POST | `/api/shadows` | the Shadow Teacher's form |
 | GET | `/api/shadows` | parents: approved teachers only |
 | GET | `/api/admin/shadows?status=pending` | admin (header `X-Admin-Password`) |
-| GET | `/api/admin/shadows/{id}/certificate` | admin |
+| GET | `/api/admin/shadows/{id}/documents/{n}` | admin: one uploaded document |
+| GET | `/api/admin/shadows/{id}/photo` | admin: profile photo |
 | POST | `/api/admin/shadows/{id}/approve` | admin |
 | POST | `/api/admin/shadows/{id}/reject` | admin |
