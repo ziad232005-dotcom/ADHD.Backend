@@ -24,6 +24,10 @@ public static class RateLimitPolicies
             options.AddPolicy(Send, httpContext => ForIp(httpContext, 5));
             options.AddPolicy(Verify, httpContext => ForIp(httpContext, 30));
 
+            options.AddPolicy(
+                Sync.SyncEndpoints.Policy,
+                httpContext => ForIp(httpContext, 120));
+
             // Also stops anyone from guessing the admin password.
             options.AddPolicy(
                 Shadows.ShadowEndpoints.AdminPolicy,

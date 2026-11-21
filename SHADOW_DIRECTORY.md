@@ -33,3 +33,16 @@ data, are listed in `.gitignore`, and must be backed up with the server.
 | GET | `/api/admin/shadows/{id}/photo` | admin: profile photo |
 | POST | `/api/admin/shadows/{id}/approve` | admin |
 | POST | `/api/admin/shadows/{id}/reject` | admin |
+
+## Test results sync
+
+The child's phone sends each finished test (TOVA or CARS) to the server; the
+parent's phone reads it and makes the PDF. No account is needed: the parent's
+phone makes a secret key, puts it in the child's QR code, and both phones use
+it. Only a hash of the key is stored (`App_Data/sync.json`).
+
+- `POST /api/sync/push` with `{ key, kind: "tova"|"cars", id, data }`
+- `POST /api/sync/pull` with `{ key }` returns `{ results: [...] }`
+
+Limits: 500 results per key, 3000 keys, 4 KB per result, 120 requests a minute
+per IP.

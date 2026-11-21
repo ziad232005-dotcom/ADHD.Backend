@@ -1,6 +1,7 @@
 using ADHD.Backend.Auth;
 using ADHD.Backend.Link;
 using ADHD.Backend.Shadows;
+using ADHD.Backend.Sync;
 using ADHD.Backend.Sms;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,9 @@ builder.Services.AddSingleton<LinkCodeService>();
 
 // Shadow Teachers apply here, the admin approves, parents read the list.
 builder.Services.AddSingleton<ShadowStore>();
+
+// Test results travel from the child's phone to the parent's phone here.
+builder.Services.AddSingleton<SyncStore>();
 
 var app = builder.Build();
 
@@ -51,6 +55,7 @@ app.MapEmailAuthEndpoints();
 app.MapSmsAuthEndpoints();
 app.MapLinkEndpoints();
 app.MapShadowEndpoints();
+app.MapSyncEndpoints();
 app.MapGet("/admin", () => Results.Redirect("/admin.html"));
 
 app.Run();
