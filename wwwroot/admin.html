@@ -7,38 +7,91 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; img-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'">
   <style>
-    body { font-family: system-ui, sans-serif; background: #f6f3ff; color: #2b2540; margin: 0; }
-    main { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
-    h1 { color: #6c4bd6; margin: 0 0 16px; }
-    .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-    input[type=password] { padding: 10px 12px; border: 1px solid #cfc6ee; border-radius: 10px; min-width: 220px; }
-    button { padding: 10px 16px; border: 0; border-radius: 10px; background: #6c4bd6; color: #fff; cursor: pointer; font-size: 14px; }
-    button.ghost { background: #fff; color: #6c4bd6; border: 1px solid #6c4bd6; }
-    button.red { background: #c0392b; }
-    button.on { background: #2b2540; }
-    .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
-    .card h2 { margin: 0 0 4px; font-size: 18px; }
-    .muted { color: #756f8c; font-size: 13px; }
-    .row { margin: 6px 0; line-height: 1.4; }
-    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-    .cert { max-width: 100%; margin-top: 10px; border-radius: 10px; border: 1px solid #e6e0fa; }
-    #message { margin: 10px 0; color: #c0392b; }
+    :root { --purple: #6c4bd6; --ink: #2b2540; --muted: #756f8c; --line: #e6e0fa; --bg: #f6f3ff; --red: #c0392b; --green: #2e9e6b; --amber: #b7791f; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink); margin: 0; }
+    header { background: #fff; border-bottom: 1px solid var(--line); }
+    header div { max-width: 980px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    header h1 { margin: 0; font-size: 18px; color: var(--purple); }
+    header small { color: var(--muted); display: block; font-weight: normal; }
+    main { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+    [hidden] { display: none !important; }
+    button { padding: 10px 16px; border: 0; border-radius: 10px; background: var(--purple); color: #fff; cursor: pointer; font-size: 14px; }
+    button.ghost { background: #fff; color: var(--purple); border: 1px solid var(--purple); }
+    button.green { background: var(--green); }
+    button.red { background: var(--red); }
+    input, textarea { font: inherit; padding: 10px 12px; border: 1px solid #cfc6ee; border-radius: 10px; width: 100%; }
+    .login { max-width: 380px; margin: 60px auto; background: #fff; border-radius: 16px; padding: 24px; }
+    .login h2 { margin: 0 0 6px; }
+    .login p { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+    .login button { width: 100%; margin-top: 12px; }
+    .error { color: var(--red); margin: 10px 0 0; min-height: 1.2em; font-size: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .stat { background: #fff; border: 2px solid transparent; border-radius: 14px; padding: 14px; text-align: left; color: var(--ink); }
+    .stat b { display: block; font-size: 28px; }
+    .stat span { color: var(--muted); font-size: 13px; }
+    .stat.on { border-color: var(--purple); }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+    .item { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; border: 1px solid transparent; width: 100%; text-align: left; color: var(--ink); font-size: 15px; }
+    .item:hover { border-color: var(--purple); }
+    .item .who { flex: 1; min-width: 0; }
+    .item .who b { display: block; }
+    .item .who span { color: var(--muted); font-size: 13px; }
+    .item .when { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .badge { font-size: 12px; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+    .badge.pending { background: #fff4db; color: var(--amber); }
+    .badge.approved { background: #e4f7eb; color: var(--green); }
+    .badge.rejected { background: #fde8e6; color: var(--red); }
+    .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+    .detail { background: #fff; border-radius: 16px; padding: 20px; }
+    .detail-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+    .detail h2 { margin: 0 0 4px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .group { border-top: 1px solid var(--line); padding: 14px 0 4px; margin-top: 12px; }
+    .group h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--purple); }
+    dl { display: grid; grid-template-columns: 160px 1fr; gap: 6px 12px; margin: 0 0 8px; }
+    dt { color: var(--muted); font-size: 14px; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .files { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .cert { max-width: 100%; margin-top: 10px; border-radius: 10px; border: 1px solid var(--line); }
+    .decision { background: var(--bg); border-radius: 12px; padding: 14px; margin-top: 16px; }
+    .decision label { font-size: 14px; display: block; margin-bottom: 6px; }
+    .decision .buttons { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    #message { color: var(--red); margin: 8px 0; min-height: 1.2em; }
+    @media (max-width: 560px) { dl { grid-template-columns: 1fr; } dt { margin-top: 6px; } .item .when { display: none; } }
   </style>
 </head>
 <body>
+<header>
+  <div>
+    <h1>MAZID admin <small>Shadow Teacher requests</small></h1>
+    <button id="logout" class="ghost" hidden>Log out</button>
+  </div>
+</header>
+
 <main>
-  <h1>MAZID admin: Shadow Teachers</h1>
-  <div class="bar">
+  <section id="login" class="login">
+    <h2>Sign in</h2>
+    <p>Enter the admin password to review Shadow Teacher requests.</p>
     <input id="password" type="password" placeholder="Admin password" autocomplete="current-password">
     <button id="load">Open</button>
-  </div>
-  <div class="bar" id="tabs" hidden>
-    <button class="on" data-status="pending">Waiting</button>
-    <button class="ghost" data-status="approved">Approved</button>
-    <button class="ghost" data-status="rejected">Rejected</button>
-  </div>
-  <div id="message"></div>
-  <div id="list"></div>
+    <div id="loginError" class="error"></div>
+  </section>
+
+  <section id="board" hidden>
+    <div class="stats" id="stats"></div>
+    <div id="message"></div>
+
+    <div id="listView">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search by name, governorate or qualification">
+        <button id="refresh" class="ghost">Refresh</button>
+      </div>
+      <div id="list"></div>
+    </div>
+
+    <div id="detailView" hidden></div>
+  </section>
 </main>
 <script src="admin.js"></script>
 </body>
