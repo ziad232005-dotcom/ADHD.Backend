@@ -13,6 +13,13 @@ public sealed class SyncResult
     public DateTime ReceivedAt { get; set; }
 }
 
+/// <summary>The tasks and rewards the parent's phone keeps for one child.</summary>
+public sealed class TasksSnapshot
+{
+    public JsonElement Data { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 /// <summary>
 /// Holds test results between a child's phone and the parent's phone.
 /// The parent's phone makes a secret key and puts it in the QR code; the
@@ -25,6 +32,7 @@ public sealed class SyncStore
     public const int MaxKeys = 3000;
     public const int MaxResultsPerKey = 500;
     public const int MaxDataLength = 4096;
+    public const int MaxTasksLength = 16384;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -33,7 +41,9 @@ public sealed class SyncStore
 
     private readonly object _lock = new();
     private readonly string _file;
+    private readonly string _tasksFile;
     private Dictionary<string, List<SyncResult>> _items;
+    private Dictionary<string, TasksSnapshot> _tasks;
 
     public SyncStore(IConfiguration configuration)
     {
@@ -41,7 +51,62 @@ public sealed class SyncStore
             configuration["Shadows:DataPath"] ?? "App_Data");
         Directory.CreateDirectory(folder);
         _file = Path.Combine(folder, "sync.json");
+        _tasksFile = Path.Combine(folder, "sync_tasks.json");
         _items = Load();
+        _tasks = LoadTasks();
+    }
+
+    private Dictionary<string, TasksSnapshot> LoadTasks()
+    {
+        if (!File.Exists(_tasksFile)) return new();
+
+        try
+        {
+            return JsonSerializer
+                .Deserialize<Dictionary<string, TasksSnapshot>>(
+                    File.ReadAllText(_tasksFile)) ?? new();
+        }
+        catch (JsonException)
+        {
+            return new();
+        }
+    }
+
+    /// <summary>
+    /// Keeps the newest tasks and rewards of the child. Returns false when
+    /// the server is full.
+    /// </summary>
+    public bool PutTasks(string key, JsonElement data)
+    {
+        var hash = Hash(key);
+
+        lock (_lock)
+        {
+            if (!_tasks.ContainsKey(hash) && _tasks.Count >= MaxKeys)
+            {
+                return false;
+            }
+
+            _tasks[hash] = new TasksSnapshot
+            {
+                Data = data.Clone(),
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            File.WriteAllText(_tasksFile,
+                JsonSerializer.Serialize(_tasks, JsonOptions));
+            return true;
+        }
+    }
+
+    public TasksSnapshot? GetTasks(string key)
+    {
+        lock (_lock)
+        {
+            return _tasks.TryGetValue(Hash(key), out var snapshot)
+                ? snapshot
+                : null;
+        }
     }
 
     private Dictionary<string, List<SyncResult>> Load()

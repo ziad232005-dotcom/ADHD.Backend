@@ -46,3 +46,12 @@ it. Only a hash of the key is stored (`App_Data/sync.json`).
 
 Limits: 500 results per key, 3000 keys, 4 KB per result, 120 requests a minute
 per IP.
+
+### Tasks and rewards (parent to child)
+
+The parent's phone keeps one copy of the child's tasks and rewards on the
+server (`App_Data/sync_tasks.json`); the child's phone reads it when it opens.
+
+- `POST /api/sync/tasks/put` with `{ key, data }` (an object, up to 16 KB)
+- `POST /api/sync/tasks/get` with `{ key }` returns `{ data, updatedAt }`
+  (`data` is null when nothing was sent yet)
