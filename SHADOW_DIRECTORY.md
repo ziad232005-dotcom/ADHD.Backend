@@ -52,6 +52,6 @@ per IP.
 The parent's phone keeps one copy of the child's tasks and rewards on the
 server (`App_Data/sync_tasks.json`); the child's phone reads it when it opens.
 
-- `POST /api/sync/tasks/put` with `{ key, data }` (an object, up to 16 KB)
+- `POST /api/sync/tasks/put` with `{ key, data }` (an object, up to 64 KB)
 - `POST /api/sync/tasks/get` with `{ key }` returns `{ data, updatedAt }`
   (`data` is null when nothing was sent yet)

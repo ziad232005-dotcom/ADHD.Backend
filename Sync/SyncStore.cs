@@ -32,7 +32,7 @@ public sealed class SyncStore
     public const int MaxKeys = 3000;
     public const int MaxResultsPerKey = 500;
     public const int MaxDataLength = 4096;
-    public const int MaxTasksLength = 16384;
+    public const int MaxTasksLength = 65536;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
